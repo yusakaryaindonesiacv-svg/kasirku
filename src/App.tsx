@@ -3351,15 +3351,17 @@ function ReturnsPage({ db, onSaleReturn, onPurchaseReturn }: { db: Database, onS
   const [returnItems, setReturnItems] = useState<any[]>([]);
   const [reason, setReason] = useState('');
 
-  const transactions = activeSubTab === 'sale' ? db.sales : db.purchases;
-  const currentTx = transactions.find(t => t.id === selectedTxId);
+  const transactions = activeSubTab === 'sale' ? (db.sales || []) : (db.purchases || []);
+  const currentTx = transactions.find(t => t.id.trim().toUpperCase() === selectedTxId.trim().toUpperCase());
 
   const handleSelectTx = (id: string) => {
-    setSelectedTxId(id);
-    const tx = transactions.find(t => t.id === id);
+    const searchId = id.trim().toUpperCase();
+    const tx = transactions.find(t => t.id.trim().toUpperCase() === searchId);
     if (tx) {
+      setSelectedTxId(tx.id);
       setReturnItems(tx.items.map(i => ({ ...i, returnQty: 0 })));
     } else {
+      setSelectedTxId(id.toUpperCase());
       setReturnItems([]);
     }
   };
@@ -3398,7 +3400,7 @@ function ReturnsPage({ db, onSaleReturn, onPurchaseReturn }: { db: Database, onS
         <div className="lg:col-span-1 space-y-6">
           <div className="card p-6 space-y-4">
             <h3 className="font-bold text-white">Cari Transaksi</h3>
-            <div>
+            <div className="relative">
               <label className="label px-0">ID Transaksi ({activeSubTab === 'sale' ? 'TRX-...' : 'PUR-...'})</label>
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
@@ -3410,6 +3412,30 @@ function ReturnsPage({ db, onSaleReturn, onPurchaseReturn }: { db: Database, onS
                   onChange={e => handleSelectTx(e.target.value.toUpperCase())}
                 />
               </div>
+              
+              {selectedTxId && !currentTx && (
+                <div className="absolute z-[70] w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
+                  {transactions
+                    .filter(t => t.id.toUpperCase().includes(selectedTxId.trim().toUpperCase()))
+                    .slice(0, 10)
+                    .map(t => (
+                      <button 
+                        key={t.id}
+                        onClick={() => handleSelectTx(t.id)}
+                        className="w-full px-4 py-3 text-left hover:bg-slate-800 border-b border-slate-800 last:border-0 flex justify-between items-center"
+                      >
+                        <div>
+                          <p className="text-xs font-bold text-white">{t.id}</p>
+                          <p className="text-[10px] text-slate-500">{format(new Date(t.date), 'dd/MM/yy HH:mm')}</p>
+                        </div>
+                        <p className="text-xs font-bold text-indigo-400">{formatIDR(t.total)}</p>
+                      </button>
+                    ))}
+                  {transactions.filter(t => t.id.toUpperCase().includes(selectedTxId.trim().toUpperCase())).length === 0 && (
+                    <div className="p-4 text-center text-xs text-slate-500 italic">Transaksi tidak ditemukan</div>
+                  )}
+                </div>
+              )}
             </div>
             {currentTx && (
               <div className="p-4 bg-slate-800/50 rounded-xl space-y-3 border border-slate-700">
