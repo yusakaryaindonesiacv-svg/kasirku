@@ -1,0 +1,6 @@
+{
+  "name": "KasirKu POS Pro",
+  "description": "Sistem Point of Sale (POS) modern dengan fitur lengkap: Kasir, Inventori, Laporan, dan Manajemen Toko. Mendukung integrasi Google Sheets.",
+  "requestFramePermissions": ["bluetooth", "usb"],
+  "majorCapabilities": []
+}
