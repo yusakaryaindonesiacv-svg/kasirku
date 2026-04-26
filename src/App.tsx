@@ -1153,11 +1153,11 @@ function LoginPage({ onLogin }: { onLogin: (u: string, p: string) => Promise<boo
 
 function DashboardPage({ db }: { db: Database }) {
   const today = new Date().toISOString().split('T')[0];
-  const salesToday = db.sales.filter(s => s.date.startsWith(today));
+  const salesToday = (db.sales || []).filter(s => s.date && s.date.startsWith(today));
   const totalSalesToday = salesToday.reduce((acc, s) => acc + s.total, 0);
   const totalTransactions = salesToday.length;
 
-  const lowStockProducts = db.products.filter(p => p.stock <= p.minStock);
+  const lowStockProducts = (db.products || []).filter(p => (p.stock || 0) <= (p.minStock || 0));
 
   // Chart data for daily sales (last 7 days)
   const salesData = useMemo(() => {
@@ -1167,16 +1167,16 @@ function DashboardPage({ db }: { db: Database }) {
       const dateStr = d.toISOString().split('T')[0];
       return {
         date: format(d, 'dd MMM', { locale: id }),
-        total: db.sales.filter(s => s.date.startsWith(dateStr)).reduce((acc, s) => acc + s.total, 0)
+        total: (db.sales || []).filter(s => s.date && s.date.startsWith(dateStr)).reduce((acc, s) => acc + (s.total || 0), 0)
       };
     }).reverse();
     return last7Days;
   }, [db.sales]);
 
   const categoryData = useMemo(() => {
-    return db.categories.map(cat => ({
+    return (db.categories || []).map(cat => ({
       name: cat,
-      value: db.products.filter(p => p.category === cat).length
+      value: (db.products || []).filter(p => p.category === cat).length
     }));
   }, [db.products, db.categories]);
 
@@ -1263,15 +1263,15 @@ function DashboardPage({ db }: { db: Database }) {
             <button className="text-xs text-indigo-400 font-bold uppercase tracking-wider">Lihat Semua</button>
           </div>
           <div className="divide-y divide-slate-800">
-            {db.sales.slice(-5).reverse().map((sale) => (
-              <div key={sale.id} className="p-4 hover:bg-slate-800/30 transition-all flex items-center justify-between">
+            {(db.sales || []).slice(-5).reverse().map((sale) => (
+              <div key={sale.id || Math.random()} className="p-4 hover:bg-slate-800/30 transition-all flex items-center justify-between">
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 bg-slate-800 rounded-full flex items-center justify-center text-indigo-400">
                     <CartIcon size={20} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-white">{sale.id}</h4>
-                    <p className="text-xs text-slate-500">{format(new Date(sale.date), 'HH:mm • dd MMM yyyy')}</p>
+                    <h4 className="text-sm font-bold text-white">{sale.id || 'N/A'}</h4>
+                    <p className="text-xs text-slate-500">{sale.date ? format(new Date(sale.date), 'HH:mm • dd MMM yyyy') : '-'}</p>
                   </div>
                 </div>
                 <div className="text-right">
@@ -3352,16 +3352,16 @@ function ReturnsPage({ db, onSaleReturn, onPurchaseReturn }: { db: Database, onS
   const [reason, setReason] = useState('');
 
   const transactions = activeSubTab === 'sale' ? (db.sales || []) : (db.purchases || []);
-  const currentTx = transactions.find(t => t.id.trim().toUpperCase() === selectedTxId.trim().toUpperCase());
+  const currentTx = transactions.find(t => (t?.id || '').trim().toUpperCase() === (selectedTxId || '').trim().toUpperCase());
 
   const handleSelectTx = (id: string) => {
-    const searchId = id.trim().toUpperCase();
-    const tx = transactions.find(t => t.id.trim().toUpperCase() === searchId);
+    const searchId = (id || '').trim().toUpperCase();
+    const tx = transactions.find(t => (t?.id || '').trim().toUpperCase() === searchId);
     if (tx) {
       setSelectedTxId(tx.id);
-      setReturnItems(tx.items.map(i => ({ ...i, returnQty: 0 })));
+      setReturnItems((tx.items || []).map(i => ({ ...i, returnQty: 0 })));
     } else {
-      setSelectedTxId(id.toUpperCase());
+      setSelectedTxId((id || '').toUpperCase());
       setReturnItems([]);
     }
   };
@@ -3416,7 +3416,7 @@ function ReturnsPage({ db, onSaleReturn, onPurchaseReturn }: { db: Database, onS
               {selectedTxId && !currentTx && (
                 <div className="absolute z-[70] w-full mt-1 bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-48 overflow-y-auto">
                   {transactions
-                    .filter(t => t.id.toUpperCase().includes(selectedTxId.trim().toUpperCase()))
+                    .filter(t => (t?.id || '').toUpperCase().includes((selectedTxId || '').trim().toUpperCase()))
                     .slice(0, 10)
                     .map(t => (
                       <button 
