@@ -326,12 +326,18 @@ const INITIAL_DATABASE: Database = {
 // Helper to ensure DB validity
 const sanitizeDb = (data: any): Database => {
   const base = { ...INITIAL_DATABASE };
-  if (!data || typeof data !== 'object') {
-    console.warn('sanitizeDb: data is not an object, returning INITIAL_DATABASE');
+  
+  if (!data || typeof data !== 'object' || Array.isArray(data)) {
+    console.warn('sanitizeDb: data is invalid, returning INITIAL_DATABASE');
     return base;
   }
 
-  const result = { ...base, ...data };
+  // Merge deeply for settings
+  const result = { 
+    ...base, 
+    ...data,
+    settings: { ...base.settings, ...(data.settings || {}) }
+  };
   
   // Ensure all arrays are strictly arrays
   const arrayKeys = [
@@ -341,31 +347,25 @@ const sanitizeDb = (data: any): Database => {
   ];
 
   arrayKeys.forEach((key) => {
-    if (!Array.isArray(result[key as keyof Database])) {
-      (result as any)[key] = [];
+    if (!Array.isArray((result as any)[key])) {
+      (result as any)[key] = Array.isArray((data as any)[key]) ? (data as any)[key] : [];
     }
   });
 
-  // Ensure users exists and has at least one admin
-  if (result.users.length === 0) {
+  if (!result.users || result.users.length === 0) {
     result.users = [...INITIAL_DATABASE.users];
   }
 
-  // Ensure customers exists and has at least one default customer
-  if (result.customers.length === 0) {
+  if (!result.customers || result.customers.length === 0) {
     result.customers = [...INITIAL_DATABASE.customers];
   } else if (!result.customers.find((c: any) => c.id === 'C001')) {
     result.customers = [INITIAL_DATABASE.customers[0], ...result.customers];
   }
 
-  // Category must at least have "Default" if empty
-  if (result.categories.length === 0) {
+  if (!Array.isArray(result.categories) || result.categories.length === 0) {
     result.categories = ["Default"];
   }
 
-  // Ensure settings exists
-  result.settings = { ...base.settings, ...(data.settings || {}) };
-  
   return result;
 };
 
@@ -543,8 +543,13 @@ export default function App() {
 
   useEffect(() => {
     const savedShift = localStorage.getItem('active_shift');
-    if (savedShift) {
-      setActiveShift(JSON.parse(savedShift));
+    if (savedShift && savedShift !== "undefined" && savedShift !== "null") {
+      try {
+        setActiveShift(JSON.parse(savedShift));
+      } catch (e) {
+        console.error("Failed to parse saved shift", e);
+        localStorage.removeItem('active_shift');
+      }
     }
   }, []);
 
